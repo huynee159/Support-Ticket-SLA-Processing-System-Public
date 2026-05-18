@@ -121,11 +121,13 @@ func TestTicketCreate(t *testing.T) {
 		mockRepo := new(MockTicketRepository)
 		mockEventRepo := new(MockTicketEventRepository)
 		svc := NewTicketService(mockRepo, mockEventRepo)
+		dueAt := time.Now().Add(2 * time.Hour)
 		req := request.CreateTicketReq{
 			RequestorID: "user1",
 			Title:       "Test Ticket",
 			Description: "Description",
 			Priority:    domain.PriorityHigh,
+			SlaDueAt:    &dueAt,
 		}
 
 		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.Ticket")).Return(nil)
@@ -144,10 +146,12 @@ func TestTicketCreate(t *testing.T) {
 		mockRepo := new(MockTicketRepository)
 		mockEventRepo := new(MockTicketEventRepository)
 		svc := NewTicketService(mockRepo, mockEventRepo)
+		dueAt := time.Now().Add(2 * time.Hour)
 		req := request.CreateTicketReq{
 			RequestorID: "user1",
 			Title:       "Test Ticket",
 			Priority:    domain.PriorityHigh,
+			SlaDueAt:    &dueAt,
 		}
 		mockRepo.On("Create", ctx, mock.Anything).Return(errors.New("db error"))
 

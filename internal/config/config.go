@@ -35,7 +35,7 @@ type Config struct {
 
 // LoadConfig
 func LoadConfig() *Config {
-	err := godotenv.Load()
+	err := loadEnv()
 	if err != nil {
 		log.Println("Warning: No .env file found, using system environment variables")
 	}
@@ -103,7 +103,7 @@ func getEnv(key string) string {
 }
 
 func GetPoolSize(key string) int {
-	err := godotenv.Load()
+	err := loadEnv()
 	if err != nil {
 		log.Println("Warning: No .env file found in GetPoolSize, using system environment variables")
 	}
@@ -116,7 +116,7 @@ func GetPoolSize(key string) int {
 	return intVal
 }
 func GetBatchSize(key string) int {
-	err := godotenv.Load()
+	err := loadEnv()
 	if err != nil {
 		log.Println("Warning: No .env file found in GetBatchSize, using system environment variables")
 	}
@@ -136,4 +136,16 @@ func getEnvInt(key string) int {
 		log.Fatalf("Error converting %s to integer: %v", key, err)
 	}
 	return intVal
+}
+
+// loadEnv tries to load .env from the current and parent directories
+// Useful when running tests from subdirectories like internal/service/
+func loadEnv() error {
+	paths := []string{".env", "../.env", "../../.env", "../../../.env"}
+	for _, p := range paths {
+		if err := godotenv.Load(p); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("no .env file found")
 }
