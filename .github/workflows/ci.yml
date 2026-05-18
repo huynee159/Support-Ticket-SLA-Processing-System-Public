@@ -2,9 +2,9 @@ name: Go CI
 
 on:
   push:
-    branches: [ dev, master, "feat/*" ]
+    branches: [ dev, main, "feat/*" ]
   pull_request:
-    branches: [ dev, master ]
+    branches: [ dev, main ]
 
 jobs:
   build-and-test:
@@ -27,7 +27,7 @@ jobs:
         run: go mod tidy && git diff --exit-code go.mod go.sum
 
       - name: Run tests
-        run: go test -v ./...
+        run: go test -race -v ./...
 
       - name: Build binaries
         run: |
