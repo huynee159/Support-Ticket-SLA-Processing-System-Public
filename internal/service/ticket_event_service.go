@@ -2,13 +2,13 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
 	"support-ticket.com/internal/config"
+	"support-ticket.com/internal/dto/common"
 	"support-ticket.com/internal/errmsgs"
 	domain "support-ticket.com/internal/model"
 	"support-ticket.com/internal/repository"
@@ -16,7 +16,7 @@ import (
 )
 
 type TicketEventService interface {
-	Import(ctx context.Context, data []byte) (domain.BatchImportResult, error)
+	Import(ctx context.Context, events []domain.TicketEvent) (domain.BatchImportResult, error)
 }
 
 type ticketEventService struct {
@@ -47,34 +47,6 @@ type parsedEvent struct {
 	Err   error // nil = valid
 }
 
-func (s *ticketEventService) parseEvents(data []byte) ([]parsedEvent, error) {
-	if len(data) == 0 {
-		return nil, errmsgs.ErrEmptyBody
-	}
-
-	var events []domain.TicketEvent
-	if err := json.Unmarshal(data, &events); err != nil {
-		return nil, fmt.Errorf("invalid JSON: %w", err)
-	}
-
-	if len(events) == 0 {
-		return nil, errmsgs.ErrEmptyBatch
-	}
-
-	if len(events) > maxBatchSize {
-		return nil, fmt.Errorf("%w: got %d, max %d", errmsgs.ErrBatchTooLarge, len(events), maxBatchSize)
-	}
-
-	parsed := make([]parsedEvent, len(events))
-	for i, e := range events {
-		parsed[i] = parsedEvent{
-			Event: e,
-			Err:   e.Validate(),
-		}
-	}
-	return parsed, nil
-}
-
 type ticketWorkerJob struct {
 	TicketID uint
 	Events   []domain.TicketEvent
@@ -96,8 +68,27 @@ type importMetadata struct {
 	existingTicketAssignees map[uint]string
 }
 
-func (s *ticketEventService) Import(ctx context.Context, data []byte) (domain.BatchImportResult, error) {
-	parsedEvents, err := s.parseEvents(data)
+// buildParsedEvents validates each event and enforces batch size limits.
+// This is business logic: the service owns validation rules and size constraints.
+func (s *ticketEventService) buildParsedEvents(events []domain.TicketEvent) ([]parsedEvent, error) {
+	if len(events) == 0 {
+		return nil, errmsgs.ErrEmptyBatch
+	}
+	if len(events) > maxBatchSize {
+		return nil, common.NewBadRequest(
+			common.ErrCodeBatchTooLarge,
+			fmt.Sprintf("batch size exceeds maximum allowed (limit: %d, got: %d)", maxBatchSize, len(events)),
+		)
+	}
+	parsed := make([]parsedEvent, len(events))
+	for i, e := range events {
+		parsed[i] = parsedEvent{Event: e, Err: e.Validate()}
+	}
+	return parsed, nil
+}
+
+func (s *ticketEventService) Import(ctx context.Context, events []domain.TicketEvent) (domain.BatchImportResult, error) {
+	parsedEvents, err := s.buildParsedEvents(events)
 	if err != nil {
 		return domain.BatchImportResult{}, err
 	}
@@ -225,7 +216,11 @@ func (s *ticketEventService) simulateTicketFSM(job ticketWorkerJob, meta importM
 
 		if event.ToStatus == domain.StatusResolved || event.ToStatus == domain.StatusCancelled {
 			if event.CreatedAt.Before(ticketCreatedAt) {
-				return rejectJob(job, fmt.Errorf("%s: %s At cannot be before Created At", errmsgs.ErrInvalidInput.Error(), strings.Title(string(event.ToStatus))))
+				status := string(event.ToStatus)
+				if len(status) > 0 {
+					status = strings.ToUpper(status[:1]) + status[1:]
+				}
+				return rejectJob(job, fmt.Errorf("%s: %s At cannot be before Created At", errmsgs.ErrInvalidInput.Error(), status))
 			}
 		}
 
