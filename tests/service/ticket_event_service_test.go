@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -43,7 +42,7 @@ func TestTicketEventService_Import(t *testing.T) {
 
 	tests := []struct {
 		name                 string
-		inputData            func() []byte
+		inputEvents          []domain.TicketEvent
 		mockRepo             func(*testmock.MockTicketRepository)
 		mockEventRepo        func(*testmock.MockTicketEventRepository)
 		expectedError        string
@@ -52,11 +51,8 @@ func TestTicketEventService_Import(t *testing.T) {
 		expectedRejectDetail string
 	}{
 		{
-			name: "SuccessSimpleImport",
-			inputData: func() []byte {
-				data, _ := json.Marshal([]domain.TicketEvent{validEvent})
-				return data
-			},
+			name:        "SuccessSimpleImport",
+			inputEvents: []domain.TicketEvent{validEvent},
 			mockRepo: func(m *testmock.MockTicketRepository) {
 				m.On("GetExistingTicketIDs", ctx, []uint{1}).Return(map[uint]bool{1: true}, nil)
 				m.On("GetTicketStatusAndCreatedAt", ctx, []uint{1}).Return(
@@ -75,21 +71,8 @@ func TestTicketEventService_Import(t *testing.T) {
 			expectedRejected: 0,
 		},
 		{
-			name: "InvalidJSON",
-			inputData: func() []byte {
-				return []byte("invalid json")
-			},
-			mockRepo:         func(m *testmock.MockTicketRepository) {},
-			mockEventRepo:    func(m *testmock.MockTicketEventRepository) {},
-			expectedError:    "invalid JSON",
-			expectedAccepted: 0,
-			expectedRejected: 0,
-		},
-		{
-			name: "EmptyBatch",
-			inputData: func() []byte {
-				return []byte("[]")
-			},
+			name:             "EmptyBatch",
+			inputEvents:      []domain.TicketEvent{},
 			mockRepo:         func(m *testmock.MockTicketRepository) {},
 			mockEventRepo:    func(m *testmock.MockTicketEventRepository) {},
 			expectedError:    "batch is empty",
@@ -97,11 +80,8 @@ func TestTicketEventService_Import(t *testing.T) {
 			expectedRejected: 0,
 		},
 		{
-			name: "RejectedNonExistentTicket",
-			inputData: func() []byte {
-				data, _ := json.Marshal([]domain.TicketEvent{nonExistentTicketEvent})
-				return data
-			},
+			name:        "RejectedNonExistentTicket",
+			inputEvents: []domain.TicketEvent{nonExistentTicketEvent},
 			mockRepo: func(m *testmock.MockTicketRepository) {
 				m.On("GetExistingTicketIDs", ctx, []uint{999}).Return(map[uint]bool{}, nil)
 				m.On("GetTicketStatusAndCreatedAt", ctx, []uint{999}).Return(
@@ -119,11 +99,8 @@ func TestTicketEventService_Import(t *testing.T) {
 			expectedRejectDetail: "does not exist in DB",
 		},
 		{
-			name: "ValidationError",
-			inputData: func() []byte {
-				data, _ := json.Marshal([]domain.TicketEvent{invalidTransitionEvent})
-				return data
-			},
+			name:        "ValidationError",
+			inputEvents: []domain.TicketEvent{invalidTransitionEvent},
 			mockRepo: func(m *testmock.MockTicketRepository) {
 				m.On("GetExistingTicketIDs", ctx, []uint(nil)).Return(map[uint]bool{}, nil)
 				m.On("GetTicketStatusAndCreatedAt", ctx, []uint(nil)).Return(
@@ -150,7 +127,7 @@ func TestTicketEventService_Import(t *testing.T) {
 			tt.mockEventRepo(mockEventRepo)
 
 			svc := service.NewTicketEventService(mockEventRepo, mockRepo)
-			res, err := svc.Import(ctx, tt.inputData())
+			res, err := svc.Import(ctx, tt.inputEvents)
 
 			if tt.expectedError != "" {
 				assert.Error(t, err)

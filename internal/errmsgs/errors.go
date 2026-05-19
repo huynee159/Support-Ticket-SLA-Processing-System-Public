@@ -16,6 +16,7 @@ var (
 	ErrEmptyBody               = common.NewBadRequest(common.ErrCodeEmptyBody, "request body is empty")
 	ErrEmptyBatch              = common.NewBadRequest(common.ErrCodeEmptyBatch, "batch is empty")
 	ErrBatchTooLarge           = common.NewBadRequest(common.ErrCodeBatchTooLarge, "batch size exceeds maximum allowed")
+	ErrUnsupportedFileFormat   = common.NewBadRequest(common.ErrCodeUnsupportedFileFormat, "unsupported file format: only json and csv are accepted")
 	ErrInternal                = common.NewInternal("internal server error")
 	ErrValidation              = common.NewBadRequest(common.ErrCodeValidation, "ticket validation failed")
 )
