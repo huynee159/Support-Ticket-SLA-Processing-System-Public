@@ -117,9 +117,8 @@ func (s *ticketServiceImpl) UpdateTicketStatus(ctx context.Context, id uint, req
 	if req.Note != "" {
 		event.Note = &req.Note
 	}
-	if err := event.Validate(); err != nil {
-		return fmt.Errorf("failed to validate event: %w", err)
-	}
+	event.Validate()
+	
 
 	ticket.Status = req.Status
 	if err := s.repo.UpdateStatusWithEvent(ctx, ticket, event); err != nil {

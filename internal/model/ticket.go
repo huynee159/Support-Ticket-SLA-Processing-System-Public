@@ -143,8 +143,7 @@ func (t *Ticket) ValidateStatusTransition(newStatus TicketStatus, reqAssigneeId 
 		t.AssigneeID = reqAssigneeId
 	} else if reqAssigneeId != "" && reqAssigneeId != t.AssigneeID {
 		return common.NewBadRequest(common.ErrCodeInvalidInput,
-			fmt.Sprintf("cannot change assignee to '%s' during status transition to '%s', current assignee is '%s'",
-				reqAssigneeId, newStatus, t.AssigneeID))
+			fmt.Sprintf("cannot change assignee during status transition to '%s'",newStatus))
 	}
 
 	if t.Status == newStatus {

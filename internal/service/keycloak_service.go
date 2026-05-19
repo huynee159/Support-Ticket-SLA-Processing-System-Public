@@ -31,13 +31,7 @@ func NewClient(tokenURL, clientID, clientSecret string) *ClientRequest {
 }
 
 func (c *ClientRequest) Login(username, password string) (*response.KeycloakTokenResponse, error) {
-	if c.tokenURL == "" {
-		return nil, common.NewInternal("authentication service is misconfigured")
-	}
-	if c.clientID == "" {
-		return nil, common.NewInternal("authentication service is misconfigured")
-	}
-	if c.clientSecret == "" {
+	if c.tokenURL == "" || c.clientID == "" || c.clientSecret == "" {
 		return nil, common.NewInternal("authentication service is misconfigured")
 	}
 
